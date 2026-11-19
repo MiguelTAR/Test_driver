@@ -1,0 +1,72 @@
+export enum SessionStatus {
+  InProgress = "IN_PROGRESS",
+  Completed = "COMPLETED",
+  Cancelled = "CANCELLED",
+}
+
+export enum EventType {
+  HardBraking = "HARD_BRAKING",
+  RapidAcceleration = "RAPID_ACCELERATION",
+  SharpTurn = "SHARP_TURN",
+  Speeding = "SPEEDING",
+  Distraction = "DISTRACTION",
+}
+
+export enum EventSeverity {
+  Low = "LOW",
+  Medium = "MEDIUM",
+  High = "HIGH",
+}
+
+export interface SensorData {
+  dataId: string;
+  sessionId: string;
+  timestamp: string;
+  speedKmH: number;
+  acceleration: number;
+  gyroscopeX: number;
+  gyroscopeY: number;
+  gyroscopeZ: number;
+  latitude: number;
+  longitude: number;
+}
+
+export interface DrivingEvent {
+  eventId: string;
+  sessionId: string;
+  type: EventType;
+  severity: EventSeverity;
+  timestamp: string;
+  speedKmH: number;
+  description: string;
+}
+
+export interface DrivingScore {
+  overallScore: number;
+  brakingScore: number;
+  accelerationScore: number;
+  corneringScore: number;
+  speedScore: number;
+  consistencyScore: number;
+  rating: string;
+}
+
+export interface TripSummary {
+  sessionId: string;
+  distanceKm: number;
+  durationMinutes: number;
+  averageSpeedKmH: number;
+  maximumSpeedKmH: number;
+  eventCount: number;
+  score: DrivingScore;
+}
+
+export interface DrivingTrip {
+  sessionId: string;
+  startTime: string;
+  endTime?: string;
+  status: SessionStatus;
+  sensorReadings: SensorData[];
+  events: DrivingEvent[];
+  summary?: TripSummary;
+}
