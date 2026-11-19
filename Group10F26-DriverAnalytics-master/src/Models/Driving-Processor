@@ -1,0 +1,287 @@
+import {
+    DrivingEvent,
+    EventSeverity,
+    EventType,
+    SensorData
+} from "./driving-models";
+
+const HARD_BRAKING_THRESHOLD = -3.5;
+const RAPID_ACCELERATION_THRESHOLD = 3.5;
+const SHARP_TURN_THRESHOLD = 2.5;
+const DEFAULT_SPEED_LIMIT_KMH = 80;
+
+function createId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
+
+function clampScore(score: number): number {
+  return Math.min(100, Math.max(0, score));
+}
+
+function getRotationMagnitude(reading: SensorData): number {
+  return Math.sqrt(
+    reading.gyroscopeX ** 2 +
+      reading.gyroscopeY ** 2 +
+      reading.gyroscopeZ ** 2
+  );
+}
+
+function getAccelerationSeverity(
+  accelerationMagnitude: number
+): EventSeverity {
+  if (accelerationMagnitude >= 6) {
+    return EventSeverity.High;
+  }
+
+  if (accelerationMagnitude >= 4.5) {
+    return EventSeverity.Medium;
+  }
+
+  return EventSeverity.Low;
+}
+
+function getSpeedSeverity(
+  speedKmH: number,
+  speedLimitKmH: number
+): EventSeverity {
+  const amountOverLimit = speedKmH - speedLimitKmH;
+
+  if (amountOverLimit >= 30) {
+    return EventSeverity.High;
+  }
+
+  if (amountOverLimit >= 15) {
+    return EventSeverity.Medium;
+  }
+
+  return EventSeverity.Low;
+}
+
+function getTurnSeverity(
+  rotationMagnitude: number
+): EventSeverity {
+  if (rotationMagnitude >= 4) {
+    return EventSeverity.High;
+  }
+
+  if (rotationMagnitude >= 3) {
+    return EventSeverity.Medium;
+  }
+
+  return EventSeverity.Low;
+}
+
+function createEvent(
+  reading: SensorData,
+  type: EventType,
+  severity: EventSeverity,
+  description: string
+): DrivingEvent {
+  return {
+    eventId: createId("event"),
+    sessionId: reading.sessionId,
+    type,
+    severity,
+    timestamp: reading.timestamp,
+    speedKmH: reading.speedKmH,
+    description,
+  };
+}
+
+
+export function detectDrivingEvents(
+  readings: SensorData[],
+  speedLimitKmH: number = DEFAULT_SPEED_LIMIT_KMH
+): DrivingEvent[] {
+  const events: DrivingEvent[] = [];
+
+  readings.forEach((reading) => {
+    if (reading.acceleration <= HARD_BRAKING_THRESHOLD) {
+      events.push(
+        createEvent(
+          reading,
+          EventType.HardBraking,
+          getAccelerationSeverity(
+            Math.abs(reading.acceleration)
+          ),
+          "A sudden decrease in speed was detected."
+        )
+      );
+    }
+
+    if (
+      reading.acceleration >=
+      RAPID_ACCELERATION_THRESHOLD
+    ) {
+      events.push(
+        createEvent(
+          reading,
+          EventType.RapidAcceleration,
+          getAccelerationSeverity(reading.acceleration),
+          "The vehicle accelerated too quickly."
+        )
+      );
+    }
+
+    const rotationMagnitude =
+      getRotationMagnitude(reading);
+
+    if (rotationMagnitude >= SHARP_TURN_THRESHOLD) {
+      events.push(
+        createEvent(
+          reading,
+          EventType.SharpTurn,
+          getTurnSeverity(rotationMagnitude),
+          "A high rotational movement was detected."
+        )
+      );
+    }
+
+    if (reading.speedKmH > speedLimitKmH) {
+      events.push(
+        createEvent(
+          reading,
+          EventType.Speeding,
+          getSpeedSeverity(
+            reading.speedKmH,
+            speedLimitKmH
+          ),
+          `The vehicle exceeded the ${speedLimitKmH} km/h speed limit.`
+        )
+      );
+    }
+  });
+
+  return events;
+}
+
+function getPenalty(
+  severity: EventSeverity
+): number {
+  switch (severity) {
+    case EventSeverity.Low:
+      return 3;
+
+    case EventSeverity.Medium:
+      return 7;
+
+    case EventSeverity.High:
+      return 12;
+  }
+}
+
+function getRating(score: number): string {
+  if (score >= 90) {
+    return "Excellent";
+  }
+
+  if (score >= 75) {
+    return "Good";
+  }
+
+  if (score >= 60) {
+    return "Fair";
+  }
+
+  return "Needs Improvement";
+}
+
+export function calculateDrivingScore(
+  events: DrivingEvent[]
+): DrivingScore {
+  let brakingScore = 100;
+  let accelerationScore = 100;
+  let corneringScore = 100;
+  let speedScore = 100;
+
+  events.forEach((event) => {
+    const penalty = getPenalty(event.severity);
+
+    switch (event.type) {
+      case EventType.HardBraking:
+        brakingScore -= penalty;
+        break;
+
+      case EventType.RapidAcceleration:
+        accelerationScore -= penalty;
+        break;
+
+      case EventType.SharpTurn:
+        corneringScore -= penalty;
+        break;
+
+      case EventType.Speeding:
+      case EventType.Distraction:
+        speedScore -= penalty;
+        break;
+    }
+  });
+
+  brakingScore = clampScore(brakingScore);
+  accelerationScore = clampScore(accelerationScore);
+  corneringScore = clampScore(corneringScore);
+  speedScore = clampScore(speedScore);
+
+  const consistencyScore = clampScore(
+    100 - events.length * 2
+  );
+
+  const overallScore = Math.round(
+    brakingScore * 0.25 +
+      accelerationScore * 0.2 +
+      corneringScore * 0.2 +
+      speedScore * 0.25 +
+      consistencyScore * 0.1
+  );
+
+  return {
+    overallScore,
+    brakingScore,
+    accelerationScore,
+    corneringScore,
+    speedScore,
+    consistencyScore,
+    rating: getRating(overallScore),
+  };
+}
+
+
+
+export function createTripSummary(
+  sessionId: string,
+  distanceKm: number,
+  durationMinutes: number,
+  readings: SensorData[],
+  events: DrivingEvent[]
+): TripSummary {
+  const speeds = readings.map(
+    (reading) => reading.speedKmH
+  );
+
+  const averageSpeedKmH =
+    speeds.length > 0
+      ? speeds.reduce(
+          (total, speed) => total + speed,
+          0
+        ) / speeds.length
+      : 0;
+
+  const maximumSpeedKmH =
+    speeds.length > 0 ? Math.max(...speeds) : 0;
+
+  return {
+    sessionId,
+    distanceKm: Number(distanceKm.toFixed(2)),
+    durationMinutes,
+    averageSpeedKmH: Number(
+      averageSpeedKmH.toFixed(1)
+    ),
+    maximumSpeedKmH: Number(
+      maximumSpeedKmH.toFixed(1)
+    ),
+    eventCount: events.length,
+    score: calculateDrivingScore(events),
+  };
+}
