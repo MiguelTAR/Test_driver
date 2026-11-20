@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { validateEmail, validatePassword } from '@/utils/validation';
+import { login } from '@/services/api';
 
 const PRIMARY = '#2F5BD9';
 const ERROR = '#D93025';
@@ -41,7 +42,7 @@ export default function LoginScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
   const nextEmailError = validateEmail(email);
   const nextPasswordError = validatePassword(password);
 
@@ -50,7 +51,15 @@ export default function LoginScreen() {
 
   if (nextEmailError || nextPasswordError) return;
 
-  setFormError('Login authentication will be implemented in Sprint 2.');
+  setIsSubmitting(true);
+  try {
+    await login(email.trim(), password);
+    setFormError(null);
+  } catch (error) {
+    setFormError(error instanceof Error ? error.message : 'Unable to log in.');
+  } finally {
+    setIsSubmitting(false);
+  }
 }
   
 

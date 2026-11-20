@@ -1,5 +1,25 @@
 # Welcome to your Expo app 👋
 
+## MySQL API
+
+The Node.js API uses `mysql2` and creates the `driver_analytics` database and tables automatically.
+
+1. Copy `.env.example` to `.env`.
+2. Set `MYSQL_ADMIN_USER` and, if required, `MYSQL_ADMIN_PASSWORD` temporarily to an account allowed to create databases and users. `MYSQL_ADMIN_PASSWORD` may remain blank for a passwordless local account.
+3. Run `npm run db:setup`. This creates the `driver_app` account and writes a generated app password to `.env`.
+4. The setup removes the admin password from `.env`; keep the app password only in `.env`.
+5. Start the API with `npm run api`.
+6. In a second terminal, run `npm run api:test`.
+
+The API exposes:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/sessions`
+- `POST /api/samples`
+- `GET /api/sessions/:id`
+- `GET /api/health`
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
