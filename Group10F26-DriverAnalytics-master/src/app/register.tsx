@@ -10,6 +10,7 @@ import {
   Text,
   TextInput
 } from 'react-native';
+import { register } from '@/services/api';
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
@@ -18,7 +19,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Validate the registration information
-  const handleRegister = () => {
+  const handleRegister = async () => {
 
     // Check for empty fields
     if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
@@ -45,17 +46,16 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return;
     }
 
-    // Registration successful (front-end demonstration)
-    Alert.alert(
-      'Success',
-      'Your account has been created successfully!'
-    );
-
-    // Clear registration fields
-    setFullName('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+    try {
+      await register(fullName.trim(), email.trim(), password);
+      Alert.alert('Success', 'Your account has been created successfully!');
+      setFullName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Unable to create account.');
+    }
   };
 
    return (

@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { enqueue, flush } from './offline-queue';
 import { useConnectionStatus } from './use-connection-status';
+import { createSession, uploadSamples } from '@/services/api';
 
 
 type SessionStatus = 'inactive' | 'starting' | 'active';
@@ -134,7 +135,9 @@ export function DrivingSessionProvider({ children }: ProviderProps) {
       );
 
       const now = Date.now();
-      setSessionId(`session-${now}`);
+      const newSessionId = `session-${now}`;
+      await createSession(newSessionId, now);
+      setSessionId(newSessionId);
       setStartedAtMs(now);
       setLatestLocation(initialLocation);
       setStatus('active');
@@ -188,7 +191,9 @@ export function DrivingSessionProvider({ children }: ProviderProps) {
   // Upload everything that was queued when the connection comes back
   useEffect(() => {
     if (isConnected) {
-      flush((items) => uploadSamples(items.map((item) => item.payload)));
+      flush(async (items) => {
+        await uploadSamples(items.map((item) => item.payload));
+      });
     }
   }, [isConnected]);
 
@@ -255,11 +260,6 @@ export function DrivingSessionProvider({ children }: ProviderProps) {
     </DrivingSessionContext.Provider>
   );
 }
-async function uploadSamples(samples: unknown[]) {
-  console.log('Uploading', samples.length, 'samples');
-  
-}
-
 export function useDrivingSession() {
   const context = useContext(DrivingSessionContext);
 
