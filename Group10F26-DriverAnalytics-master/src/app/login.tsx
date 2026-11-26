@@ -19,19 +19,19 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { validateEmail, validatePassword } from '@/utils/validation';
-import { login } from '@/services/api';
+import { useAuth } from '@/context/auth-context';
 
 const PRIMARY = '#2F5BD9';
 const ERROR = '#D93025';
 
-// Show the "Don't have an account? Sign Up" line once the Register screen (US01) exists.
-const SHOW_SIGN_UP = false;
+const SHOW_SIGN_UP = true;
 
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
 export default function LoginScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState('');
@@ -53,8 +53,9 @@ export default function LoginScreen() {
 
   setIsSubmitting(true);
   try {
-    await login(email.trim(), password);
+    await signIn(email.trim(), password);
     setFormError(null);
+    router.replace('/(tabs)');
   } catch (error) {
     setFormError(error instanceof Error ? error.message : 'Unable to log in.');
   } finally {

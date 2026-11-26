@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 
 import {
   Alert,
@@ -10,9 +11,11 @@ import {
   Text,
   TextInput
 } from 'react-native';
-import { register } from '@/services/api';
+import { useAuth } from '@/context/auth-context';
 
 export default function RegisterScreen() {
+  const router = useRouter();
+  const { createAccount } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,12 +50,13 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     }
 
     try {
-      await register(fullName.trim(), email.trim(), password);
+      await createAccount(fullName.trim(), email.trim(), password);
       Alert.alert('Success', 'Your account has been created successfully!');
       setFullName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Error', error instanceof Error ? error.message : 'Unable to create account.');
     }
