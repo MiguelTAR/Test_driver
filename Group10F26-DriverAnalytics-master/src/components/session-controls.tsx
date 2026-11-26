@@ -1,14 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import {
-    SESSION_LABELS,
-    sessionReducer,
-    type SessionAction,
-    type SessionStatus,
-} from '@/utils/session-state';
-import { useReducer } from 'react';
+import type { SessionStatus } from '@/utils/session-state';
 import { Pressable, StyleSheet } from 'react-native';
+import { useDrivingSession } from '@/hooks/driving-session-context';
 
 const PRIMARY = '#2F5BD9';
 const DANGER = '#D93025';
@@ -41,31 +36,37 @@ function ActionButton({
 }
 
 export function SessionControls() {
-  const [status, dispatch] = useReducer(sessionReducer, 'inactive' as SessionStatus);
-  const send = (action: SessionAction) => () => dispatch(action);
+  const { status, start, pause, resume, endSession, error } = useDrivingSession();
+  const currentStatus =
+    status === 'active' || status === 'paused' ? status : 'inactive';
+  const label =
+    status === 'starting' ? 'Starting...' :
+    status === 'ending' ? 'Saving...' :
+    currentStatus[0].toUpperCase() + currentStatus.slice(1);
 
   return (
     <ThemedView style={styles.container}>
       <ThemedText
         type="code"
         accessibilityLiveRegion="polite"
-        style={{ color: STATUS_COLOR[status] }}>
-        Session: {SESSION_LABELS[status]}
+        style={{ color: STATUS_COLOR[currentStatus] }}>
+        Session: {label}
       </ThemedText>
 
+      {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
       {status === 'inactive' && (
-        <ActionButton title="Start Session" color={PRIMARY} onPress={send('start')} />
+        <ActionButton title="Start Session" color={PRIMARY} onPress={() => { void start(); }} />
       )}
-      {status === 'active' && (
+      {currentStatus === 'active' && (
         <> 
-        <ActionButton title ="Pause Session"color={PAUSED_COLOR} onPress={send('pause')}/>
-        <ActionButton title ="End Session" color ={DANGER} onPress={send('end')} />
+        <ActionButton title ="Pause Session"color={PAUSED_COLOR} onPress={() => { void pause(); }}/>
+        <ActionButton title ="End Session" color ={DANGER} onPress={() => { void endSession(); }} />
         </>
       )}
-      {status === 'paused' && (
+      {currentStatus === 'paused' && (
         <>
-        <ActionButton title="Resume Session" color={PRIMARY} onPress={send('resume')} />
-        <ActionButton title="End Session" color={DANGER} onPress={send('end')} />
+        <ActionButton title="Resume Session" color={PRIMARY} onPress={() => { void resume(); }} />
+        <ActionButton title="End Session" color={DANGER} onPress={() => { void endSession(); }} />
         </>
       )}
       </ThemedView>

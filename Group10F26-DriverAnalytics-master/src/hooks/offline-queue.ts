@@ -11,26 +11,32 @@ export type QueuedItem = {
 
 export type Sender = (items: QueuedItem[]) => Promise<void>;
 
+export function withClientIds(items: QueuedItem[]) {
+  return items.map(({ id, payload }) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Queued driving data has an invalid payload.');
+    }
+    return { ...payload, clientId: id };
+  });
+}
+
 let queue: QueuedItem[] = [];
 let loaded = false;
 let flushing = false;
 
 async function load() {
   if (loaded) return;
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    queue = raw ? JSON.parse(raw) : [];
-  } catch {
-    queue = [];
+  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+  const parsed: unknown = raw ? JSON.parse(raw) : [];
+  if (!Array.isArray(parsed)) {
+    throw new Error('Stored offline driving queue is invalid.');
   }
+  queue = parsed as QueuedItem[];
   loaded = true;
 }
 
 async function save() {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-  } catch {
-  }
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
 }
 
 

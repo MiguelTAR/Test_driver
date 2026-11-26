@@ -27,19 +27,19 @@
       "expo-router",
       [
         "expo-location",
-      {
-        "locationWhenInUsePermission": "Driver Analytics uses your location during an active driving session."
-      }
-    ],
-    [
+        {
+          "locationWhenInUsePermission": "Driver Analytics uses your location during an active driving session."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
-  
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

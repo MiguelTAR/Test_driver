@@ -2,26 +2,21 @@ import { useDrivingSession } from '@/hooks/driving-session-context';
 import { useEffect, useState } from 'react';
 
 export function useSessionTimer() {
-  const { status, startedAtMs } = useDrivingSession();
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const { status, startedAtMs, pausedAtMs, pausedDurationMs } = useDrivingSession();
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
-    if (status !== 'active' || startedAtMs === null) {
-      setElapsedSeconds(0);
-      return;
-    }
-
-    const updateElapsed = () => {
-      setElapsedSeconds(
-        Math.floor((Date.now() - startedAtMs) / 1000)
-      );
-    };
-
-    updateElapsed();
-
-    const intervalId = setInterval(updateElapsed, 1000);
+    if (status !== 'active') return;
+    const intervalId = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(intervalId);
-  }, [status, startedAtMs]);
+  }, [status]);
+
+  if (startedAtMs === null || !['active', 'paused'].includes(status)) return 0;
+  const endTime = status === 'paused' && pausedAtMs !== null ? pausedAtMs : now;
+  const elapsedSeconds = Math.max(
+    0,
+    Math.floor((endTime - startedAtMs - pausedDurationMs) / 1000)
+  );
 
   return elapsedSeconds;
 }

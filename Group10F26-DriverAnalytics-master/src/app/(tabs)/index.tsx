@@ -11,6 +11,7 @@ import { Button, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDrivingSession } from '../../hooks/driving-session-context';
 import { formatElapsed, useSessionTimer } from '../../hooks/use-session-timer';
+import { useAuth } from '@/context/auth-context';
 function getDevMenuHint() {
   if (Platform.OS === 'web') {
     return <ThemedText type="small">use browser devtools</ThemedText>;
@@ -31,26 +32,27 @@ function getDevMenuHint() {
 }
 
 export default function HomeScreen() {
-  const { status, start, stop } = useDrivingSession();
+  const { status, start, pause, resume, endSession, error } = useDrivingSession();
+  const { user, isLoading: authLoading, signOut } = useAuth();
   const elapsed = useSessionTimer();
   const [completedTime, setCompletedTime] = useState<number | null>(null);
   const router = useRouter();
 
   const active = status === 'active';
+  const paused = status === 'paused';
+  const busy = status === 'starting' || status === 'ending';
 
   const handleToggleSession = async () => {
-    if (active) {
+    if (active || paused) {
       setCompletedTime(elapsed);
-      stop();
+      await endSession();
       return;
     }
 
     setCompletedTime(null);
     const started = await start();
 
-    if (!started) {
-      alert('Cannot start session: required sensors are unavailable.');
-    }
+    if (!started) return;
   };
   return (
     <ThemedView style={styles.container}>
@@ -63,10 +65,10 @@ export default function HomeScreen() {
         </ThemedView>
 
         <ThemedText type="code" style={styles.code}>
-          Session: {active ? 'Active' : 'Inactive'}
+          Session: {active ? 'Active' : paused ? 'Paused' : 'Inactive'}
         </ThemedText>
 
-        {active && (
+        {(active || paused) && (
           <ThemedText style={styles.timerDisplay}>
             {formatElapsed(elapsed)}
           </ThemedText>
@@ -83,16 +85,44 @@ export default function HomeScreen() {
           </ThemedView>
         )}
 
+        {active && (
+          <Button title="Pause Session" onPress={pause} color="#B26A00" />
+        )}
+        {paused && (
+          <Button title="Resume Session" onPress={resume} color="#2F5BD9" />
+        )}
         <Button
-          title={active ? 'End Session' : 'Start Session'}
+          title={active || paused ? 'End Session' : 'Start Session'}
           onPress={handleToggleSession}
-          color={active ? '#c0392b' : undefined}
+          disabled={busy || authLoading || (!user && !active && !paused)}
+          color={active || paused ? '#c0392b' : undefined}
         />
-
-<Button
-  title="Create Account"
-  onPress={() => router.push('/register')}
-/>
+        {error && <ThemedText accessibilityRole="alert">{error}</ThemedText>}
+        {!user ? (
+          <>
+            <Button title="Sign In" onPress={() => router.push('/login')} />
+            <Button title="Create Account" onPress={() => router.push('/register')} />
+          </>
+        ) : (
+          <>
+            <ThemedText type="small">Signed in as {user.fullName}</ThemedText>
+            <Button
+              title="Sign Out"
+              disabled={busy}
+              onPress={async () => {
+                try {
+                  if (active || paused) {
+                    const synced = await endSession();
+                    if (!synced) return;
+                  }
+                  await signOut();
+                } catch (caught) {
+                  alert(caught instanceof Error ? caught.message : 'Unable to sign out.');
+                }
+              }}
+            />
+          </>
+        )}
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
             title="Try editing"

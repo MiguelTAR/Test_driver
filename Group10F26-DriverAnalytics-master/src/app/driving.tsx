@@ -5,13 +5,15 @@ import { OfflineBanner } from '../hooks/offline-banner';
 import { formatElapsed, useSessionTimer } from '../hooks/use-session-timer';
 
 export default function DrivingScreen() {
-  const { status, error, start, stop } = useDrivingSession();
+  const { status, error, start, pause, resume, endSession } = useDrivingSession();
   const elapsed = useSessionTimer();
   const active = status === 'active';
+  const paused = status === 'paused';
+  const busy = status === 'starting' || status === 'ending';
 
   const onPress = async () => {
-    if (active) {
-      stop();
+    if (active || paused) {
+      await endSession();
       return;
     }
     await start();
@@ -24,21 +26,25 @@ export default function DrivingScreen() {
         <GpsWarningBanner />
       <View style={styles.container}>
         <Text style={styles.status}>
-          {active ? 'Session active' : 'No active session'}
+          {active ? 'Session active' : paused ? 'Session paused' : 'No active session'}
         </Text>
 
-        <Text style={styles.timer}>{formatElapsed(elapsed)}</Text>
+        {(active || paused) && <Text style={styles.timer}>{formatElapsed(elapsed)}</Text>}
 
+        {active && <Pressable onPress={pause} style={[styles.button, styles.pauseButton]}><Text style={styles.buttonText}>Pause Session</Text></Pressable>}
+        {paused && <Pressable onPress={resume} style={[styles.button, styles.resumeButton]}><Text style={styles.buttonText}>Resume Session</Text></Pressable>}
         <Pressable
           onPress={onPress}
+          disabled={busy}
           style={({ pressed }) => [
             styles.button,
-            { backgroundColor: active ? '#c0392b' : '#27ae60' },
+            { backgroundColor: active || paused ? '#c0392b' : '#27ae60' },
+            busy && { opacity: 0.6 },
             pressed && { opacity: 0.8 },
           ]}
         >
           <Text style={styles.buttonText}>
-            {active ? 'Stop Driving' : 'Start Driving'}
+            {active || paused ? 'End Session' : busy ? 'Please wait...' : 'Start Driving'}
           </Text>
         </Pressable>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -68,6 +74,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 12,
   },
+  pauseButton: { backgroundColor: '#B26A00' },
+  resumeButton: { backgroundColor: '#2F5BD9' },
   buttonText: {
     color: 'white',
     fontSize: 18,
