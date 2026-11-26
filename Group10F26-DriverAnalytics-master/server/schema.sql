@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS driving_sessions (
   user_id CHAR(36) NULL,
   started_at DATETIME(3) NOT NULL,
   ended_at DATETIME(3) NULL,
-  status ENUM('active', 'completed') NOT NULL DEFAULT 'active',
+  status ENUM('active', 'paused', 'completed') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS driving_sessions (
 
 CREATE TABLE IF NOT EXISTS telemetry_samples (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  client_id VARCHAR(64) NULL,
   session_id CHAR(36) NOT NULL,
   recorded_at DATETIME(3) NOT NULL,
   latitude DECIMAL(10,7) NULL,
@@ -35,15 +36,18 @@ CREATE TABLE IF NOT EXISTS telemetry_samples (
   acceleration_z DOUBLE NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_samples_session FOREIGN KEY (session_id) REFERENCES driving_sessions(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_samples_client_id (client_id),
   INDEX idx_samples_session_time (session_id, recorded_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS session_events (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  client_id VARCHAR(64) NULL,
   session_id CHAR(36) NOT NULL,
-  event_type ENUM('gps_lost', 'gps_restored') NOT NULL,
+  event_type ENUM('gps_lost', 'gps_restored', 'started', 'paused', 'resumed', 'completed') NOT NULL,
   recorded_at DATETIME(3) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_events_session FOREIGN KEY (session_id) REFERENCES driving_sessions(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_events_client_id (client_id),
   INDEX idx_events_session_time (session_id, recorded_at)
 ) ENGINE=InnoDB;
