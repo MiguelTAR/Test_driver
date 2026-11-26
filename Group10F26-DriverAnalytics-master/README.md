@@ -6,10 +6,12 @@ The Node.js API uses `mysql2` and creates the `driver_analytics` database and ta
 
 1. Copy `.env.example` to `.env`.
 2. Set `MYSQL_ADMIN_USER` and, if required, `MYSQL_ADMIN_PASSWORD` temporarily to an account allowed to create databases and users. `MYSQL_ADMIN_PASSWORD` may remain blank for a passwordless local account.
-3. Run `npm run db:setup`. This creates the `driver_app` account and writes a generated app password to `.env`.
-4. The setup removes the admin password from `.env`; keep the app password only in `.env`.
+3. Run `npm run db:setup`. This creates the `driver_app` account and writes a generated app password and API signing secret to `.env`.
+4. The setup removes the admin password from `.env`; keep the app password and API secret only in `.env`.
 5. Start the API with `npm run api`.
 6. In a second terminal, run `npm run api:test`.
+
+If `.env` already existed before the API authentication update, run `npm run auth:setup` once to generate its `JWT_SECRET` without changing the database account.
 
 The API exposes:
 
@@ -19,6 +21,10 @@ The API exposes:
 - `POST /api/samples`
 - `GET /api/sessions/:id`
 - `GET /api/health`
+
+Registration and login return a signed bearer token. Driving sessions and telemetry routes require that token. Session creation assigns the authenticated user's ID server-side; clients cannot choose another owner. Pause, resume, and completion records are queued with telemetry when offline, and the end action stops sensor collection immediately.
+
+On an existing database, starting the API applies the session lifecycle and offline-retry schema updates automatically. Use HTTPS and a private `JWT_SECRET` when deploying the API beyond local development.
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
