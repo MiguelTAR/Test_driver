@@ -22,6 +22,11 @@ async function setup() {
     process.env.MYSQL_PASSWORD !== 'replace_with_generated_password'
       ? process.env.MYSQL_PASSWORD
       : crypto.randomBytes(32).toString('base64url');
+  const jwtSecret =
+    process.env.JWT_SECRET &&
+    process.env.JWT_SECRET !== 'replace_with_a_random_64_character_secret'
+      ? process.env.JWT_SECRET
+      : crypto.randomBytes(32).toString('hex');
 
   const admin = await mysql.createConnection({
     host,
@@ -70,12 +75,16 @@ async function setup() {
     /^MYSQL_ADMIN_PASSWORD=.*$/m,
     'MYSQL_ADMIN_PASSWORD='
   );
+  envText = envText.replace(
+    /^JWT_SECRET=.*$/m,
+    `JWT_SECRET=${jwtSecret}`
+  );
   fs.writeFileSync(envPath, envText);
 
   console.log(
     `Created database "${database}" and dedicated account "${appUser}".`
   );
-  console.log('The app password was saved in .env and the admin password was cleared.');
+  console.log('App credentials and the API signing secret were saved in .env; the admin password was cleared.');
 }
 
 setup().catch((error) => {
